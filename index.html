@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sổ Kế Hoạch Công Tác</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+   
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+   
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 6px;
+    }
+   
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+    }
+   
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.5);
+      border-radius: 3px;
+    }
+   
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+   
+    .animate-slide-in {
+      animation: slideIn 0.3s ease-out;
+    }
+   
+    .task-card {
+      transition: all 0.2s ease;
+    }
+   
+    .task-card:hover {
+      transform: translateX(4px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+   
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      transition: all 0.3s ease;
+    }
+   
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+    }
+   
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .week-tab {
+      transition: all 0.2s ease;
+    }
+
+    .week-tab:hover {
+      transform: translateY(-2px);
+    }
+
+    .week-tab.active {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: white;
+    }
+
+    /* Responsive improvements */
+    @media (max-width: 640px) {
+      .task-card {
+        font-size: 0.875rem;
+      }
+      
+      .day-header h3 {
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+    // Icons components
+    const CalendarIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </svg>
+    );
+
+    const ClockIcon = () => (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+    );
+
+    const BellIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+      </svg>
+    );
+
+    const CheckIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    );
+
+    const AlertIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+    );
+
+    const PlusIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+    );
+
+    const XIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    );
+
+    const EditIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+      </svg>
+    );
+
+    const LockIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+      </svg>
+    );
+
+    const TrashIcon = () => (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+    );
+
+    const DownloadIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+    );
+
+    const UploadIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="17 8 12 3 7 8"></polyline>
+        <line x1="12" y1="3" x2="12" y2="15"></line>
+      </svg>
+    );
+
+    const DatabaseIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+      </svg>
+    );
+
+    const ChevronDownIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    );
+
+    const ChevronUpIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="18 15 12 9 6 15"></polyline>
+      </svg>
+    );
+
+    const RefreshIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+    );
+
+    const NoteIcon = () => (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+    );
+
+    const FolderIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+      </svg>
+    );
+
+    const WorkPlanApp = () => {
+      const [userInfo, setUserInfo] = useState({
+        name: '',
+        rank: '',
+        unit: '',
+        idNumber: ''
+      });
+      const [showUserInfo, setShowUserInfo] = useState(false);
+      const [isEditingUserInfo, setIsEditingUserInfo] = useState(false);
+      const [allWeeks, setAllWeeks] = useState([]);
+      const [activeWeekId, setActiveWeekId] = useState(null);
+      const [pendingTasks, setPendingTasks] = useState([]);
+      const [showNotification, setShowNotification] = useState(false);
+      const [expandedDays, setExpandedDays] = useState({});
+      const [isLoading, setIsLoading] = useState(true);
+      const [isExporting, setIsExporting] = useState(false);
+      const [showExportModal, setShowExportModal] = useState(false);
+      const [exportFromDate, setExportFromDate] = useState('');
+      const [exportToDate, setExportToDate] = useState('');
+      const [showWeekList, setShowWeekList] = useState(false);
+      const [showReminderModal, setShowReminderModal] = useState(false);
+      const [reminders, setReminders] = useState([]);
+      const [showBackupMenu, setShowBackupMenu] = useState(false);
+      const restoreInputRef = useRef(null);
+
+      useEffect(() => {
+        loadData();
+        checkReminders();
+        const interval = setInterval(checkReminders, 60000);
+        return () => clearInterval(interval);
+      }, []);
+
+      const debouncedSave = useMemo(() => {
+        let timeoutId;
+        return (key, value) => {
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            try {
+              localStorage.setItem(key, JSON.stringify(value));
+            } catch (error) {
+              console.error('Save error:', error);
+            }
+          }, 500);
+        };
+      }, []);
+
+      const loadData = () => {
+        setIsLoading(true);
+        try {
+          const userInfoStr = localStorage.getItem('user-info');
+          if (userInfoStr) {
+            setUserInfo(JSON.parse(userInfoStr));
+          } else {
+            setShowUserInfo(true);
+            setIsEditingUserInfo(true);
+          }
+
+          const weeksStr = localStorage.getItem('all-weeks');
+          if (weeksStr) {
+            const weeks = JSON.parse(weeksStr);
+            setAllWeeks(weeks);
+            if (weeks.length > 0) {
+              setActiveWeekId(weeks[0].id);
+              const today = new Date().toISOString().split('T')[0];
+              const todayIndex = weeks[0].workPlan.findIndex(day => day.date === today);
+              if (todayIndex !== -1) {
+                setExpandedDays({ [todayIndex]: true });
+              }
+              checkPendingTasks(weeks);
+            }
+          }
+
+          const remindersStr = localStorage.getItem('reminders');
+          if (remindersStr) {
+            setReminders(JSON.parse(remindersStr));
+          }
+        } catch (error) {
+          console.log('Khởi tạo dữ liệu mới');
+          setShowUserInfo(true);
+          setIsEditingUserInfo(true);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      const saveUserInfo = () => {
+        if (!userInfo.name.trim()) {
+          alert('Vui lòng nhập họ và tên');
+          return;
+        }
+        localStorage.setItem('user-info', JSON.stringify(userInfo));
+        setShowUserInfo(false);
+        setIsEditingUserInfo(false);
+      };
+
+      const startEditingUserInfo = () => {
+        setIsEditingUserInfo(true);
+      };
+
+      const saveAllWeeks = useCallback((weeks) => {
+        debouncedSave('all-weeks', weeks);
+      }, [debouncedSave]);
+
+      const saveReminders = useCallback((reminders) => {
+        localStorage.setItem('reminders', JSON.stringify(reminders));
+        setReminders(reminders);
+      }, []);
+
+      // BACKUP Function
+      const handleBackup = () => {
+        try {
+          const backupData = {
+            version: '1.0',
+            timestamp: new Date().toISOString(),
+            userInfo: userInfo,
+            allWeeks: allWeeks,
+            reminders: reminders
+          };
+
+          const dataStr = JSON.stringify(backupData, null, 2);
+          const dataBlob = new Blob([dataStr], { type: 'application/json' });
+          const url = URL.createObjectURL(dataBlob);
+          const link = document.createElement('a');
+          link.href = url;
+          const filename = `WorkPlan_Backup_${new Date().toISOString().split('T')[0]}.json`;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          alert('✅ Sao lưu dữ liệu thành công!\nFile: ' + filename);
+          setShowBackupMenu(false);
+        } catch (error) {
+          console.error('Backup error:', error);
+          alert('❌ Có lỗi khi sao lưu dữ liệu!');
+        }
+      };
+
+      // RESTORE Function
+      const handleRestore = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const backupData = JSON.parse(e.target.result);
+
+            // Validate backup data
+            if (!backupData.version || !backupData.userInfo || !backupData.allWeeks) {
+              alert('❌ File backup không hợp lệ!');
+              return;
+            }
+
+            // Confirm before restore
+            const confirmMsg = `Bạn có chắc muốn khôi phục dữ liệu?\n\n` +
+              `File backup: ${file.name}\n` +
+              `Ngày backup: ${new Date(backupData.timestamp).toLocaleString('vi-VN')}\n` +
+              `Số tuần: ${backupData.allWeeks.length}\n` +
+              `Nhắc việc: ${backupData.reminders?.length || 0}\n\n` +
+              `⚠️ Dữ liệu hiện tại sẽ bị ghi đè!`;
+
+            if (!confirm(confirmMsg)) {
+              return;
+            }
+
+            // Restore data
+            localStorage.setItem('user-info', JSON.stringify(backupData.userInfo));
+            localStorage.setItem('all-weeks', JSON.stringify(backupData.allWeeks));
+            if (backupData.reminders) {
+              localStorage.setItem('reminders', JSON.stringify(backupData.reminders));
+            }
+
+            alert('✅ Khôi phục dữ liệu thành công!\n\nTrang web sẽ tải lại...');
+            
+            // Reload page to refresh all states
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
+
+          } catch (error) {
+            console.error('Restore error:', error);
+            alert('❌ Có lỗi khi khôi phục dữ liệu!\n\nVui lòng kiểm tra file backup.');
+          }
+        };
+
+        reader.readAsText(file);
+        event.target.value = ''; // Reset input
+      };
+
+      const checkReminders = useCallback(() => {
+        const now = new Date();
+        const remindersStr = localStorage.getItem('reminders');
+        if (!remindersStr) return;
+
+        const storedReminders = JSON.parse(remindersStr);
+        const dueReminders = storedReminders.filter(r => {
+          const reminderTime = new Date(r.datetime);
+          return reminderTime <= now && !r.notified;
+        });
+
+        if (dueReminders.length > 0) {
+          dueReminders.forEach(reminder => {
+            if (Notification.permission === 'granted') {
+              new Notification('🔔 Nhắc việc', {
+                body: reminder.content,
+                icon: '⭐'
+              });
+            }
+          });
+
+          const updatedReminders = storedReminders.map(r => {
+            if (dueReminders.find(dr => dr.id === r.id)) {
+              return { ...r, notified: true };
+            }
+            return r;
+          });
+          
+          saveReminders(updatedReminders);
+        }
+      }, [saveReminders]);
+
+      const addReminder = (taskContent, datetime) => {
+        if (Notification.permission === 'default') {
+          Notification.requestPermission();
+        }
+
+        const newReminder = {
+          id: Date.now(),
+          content: taskContent,
+          datetime: datetime,
+          notified: false,
+          createdAt: new Date().toISOString()
+        };
+
+        const updatedReminders = [...reminders, newReminder];
+        saveReminders(updatedReminders);
+        alert('Đã đặt nhắc việc!');
+      };
+
+      const deleteReminder = (id) => {
+        const updatedReminders = reminders.filter(r => r.id !== id);
+        saveReminders(updatedReminders);
+      };
+
+      const checkPendingTasks = useCallback((weeks = allWeeks) => {
+        const pending = [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+       
+        weeks.forEach(week => {
+          week.workPlan.forEach(day => {
+            const dayDate = new Date(day.date);
+            dayDate.setHours(0, 0, 0, 0);
+            if (dayDate <= today) {
+              day.tasks.forEach(task => {
+                if (!task.completed && task.content.trim()) {
+                  pending.push({
+                    date: day.date,
+                    dayOfWeek: day.dayOfWeek,
+                    content: task.content,
+                    weekName: week.name
+                  });
+                }
+              });
+            }
+          });
+        });
+
+        setPendingTasks(pending);
+        if (pending.length > 0 && !showNotification) {
+          setShowNotification(true);
+        }
+      }, [allWeeks, showNotification]);
+
+      const getNextWeekDates = () => {
+        let startDate;
+        
+        if (allWeeks.length > 0) {
+          const lastWeekEndDate = allWeeks[0].endDate;
+          startDate = new Date(lastWeekEndDate);
+          startDate.setDate(startDate.getDate() + 1);
+        } else {
+          const today = new Date();
+          const dayOfWeek = today.getDay();
+          startDate = new Date(today);
+          startDate.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        }
+
+        const weekDates = [];
+        const daysOfWeek = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'];
+       
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(startDate);
+          date.setDate(startDate.getDate() + i);
+          weekDates.push({
+            dayOfWeek: daysOfWeek[i],
+            date: date.toISOString().split('T')[0],
+            displayDate: `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`
+          });
+        }
+        return weekDates;
+      };
+
+      const createNewWeek = () => {
+        const weekDates = getNextWeekDates();
+        const newWeek = {
+          id: Date.now(),
+          name: `Tuần ${weekDates[0].displayDate} - ${weekDates[6].displayDate}`,
+          startDate: weekDates[0].date,
+          endDate: weekDates[6].date,
+          workPlan: weekDates.map(day => ({
+            ...day,
+            tasks: []
+          }))
+        };
+
+        const updatedWeeks = [newWeek, ...allWeeks];
+        setAllWeeks(updatedWeeks);
+        setActiveWeekId(newWeek.id);
+        saveAllWeeks(updatedWeeks);
+        setExpandedDays({});
+      };
+
+      const activeWeek = useMemo(() => {
+        return allWeeks.find(w => w.id === activeWeekId);
+      }, [allWeeks, activeWeekId]);
+
+      const toggleDay = (dayIndex) => {
+        setExpandedDays(prev => ({
+          ...prev,
+          [dayIndex]: !prev[dayIndex]
+        }));
+      };
+
+      const addTask = useCallback((dayIndex) => {
+        const updatedWeeks = allWeeks.map(week => {
+          if (week.id === activeWeekId) {
+            const updatedPlan = [...week.workPlan];
+            updatedPlan[dayIndex].tasks.push({
+              id: Date.now(),
+              content: '',
+              completed: false,
+              startTime: '',
+              endTime: '',
+              notes: '',
+              result: ''
+            });
+            return { ...week, workPlan: updatedPlan };
+          }
+          return week;
+        });
+
+        setAllWeeks(updatedWeeks);
+        saveAllWeeks(updatedWeeks);
+        setExpandedDays(prev => ({ ...prev, [dayIndex]: true }));
+      }, [allWeeks, activeWeekId, saveAllWeeks]);
+
+      const updateTask = useCallback((dayIndex, taskIndex, field, value) => {
+        const updatedWeeks = allWeeks.map(week => {
+          if (week.id === activeWeekId) {
+            const updatedPlan = [...week.workPlan];
+            updatedPlan[dayIndex].tasks[taskIndex][field] = value;
+            return { ...week, workPlan: updatedPlan };
+          }
+          return week;
+        });
+
+        setAllWeeks(updatedWeeks);
+        saveAllWeeks(updatedWeeks);
+        
+        if (field === 'completed') {
+          checkPendingTasks(updatedWeeks);
+        }
+      }, [allWeeks, activeWeekId, saveAllWeeks, checkPendingTasks]);
+
+      const deleteTask = useCallback((dayIndex, taskIndex) => {
+        if (!confirm('Bạn có chắc muốn xóa công việc này?')) return;
+
+        const updatedWeeks = allWeeks.map(week => {
+          if (week.id === activeWeekId) {
+            const updatedPlan = [...week.workPlan];
+            updatedPlan[dayIndex].tasks.splice(taskIndex, 1);
+            return { ...week, workPlan: updatedPlan };
+          }
+          return week;
+        });
+
+        setAllWeeks(updatedWeeks);
+        saveAllWeeks(updatedWeeks);
+        checkPendingTasks(updatedWeeks);
+      }, [allWeeks, activeWeekId, saveAllWeeks, checkPendingTasks]);
+
+      const deleteWeek = useCallback((weekId) => {
+        if (!confirm('Bạn có chắc muốn xóa tuần này?')) return;
+
+        const updatedWeeks = allWeeks.filter(w => w.id !== weekId);
+        setAllWeeks(updatedWeeks);
+        saveAllWeeks(updatedWeeks);
+
+        if (activeWeekId === weekId && updatedWeeks.length > 0) {
+          setActiveWeekId(updatedWeeks[0].id);
+        }
+      }, [allWeeks, activeWeekId, saveAllWeeks]);
+
+      const getDayStats = (day) => {
+        const total = day.tasks.length;
+        const completed = day.tasks.filter(t => t.completed).length;
+        return { total, completed };
+      };
+
+      const isToday = (date) => {
+        const today = new Date().toISOString().split('T')[0];
+        return date === today;
+      };
+
+      const handleExport = () => {
+        if (!exportFromDate || !exportToDate) {
+          alert('Vui lòng chọn ngày bắt đầu và kết thúc');
+          return;
+        }
+        if (new Date(exportFromDate) > new Date(exportToDate)) {
+          alert('Ngày bắt đầu phải trước ngày kết thúc');
+          return;
+        }
+        exportToWord(exportFromDate, exportToDate);
+        setShowExportModal(false);
+      };
+
+      const exportToWord = async (fromDate, toDate) => {
+        setIsExporting(true);
+        try {
+          let allDays = [];
+          allWeeks.forEach(week => {
+            const filteredDays = week.workPlan.filter(day => 
+              day.date >= fromDate && day.date <= toDate
+            );
+            allDays = [...allDays, ...filteredDays];
+          });
+
+          allDays.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+          let htmlContent = `
+            <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+                  xmlns:w='urn:schemas-microsoft-com:office:word' 
+                  xmlns='http://www.w3.org/TR/REC-html40'>
+            <head>
+              <meta charset='utf-8'>
+              <xml>
+                <w:WordDocument>
+                  <w:View>Print</w:View>
+                  <w:Zoom>100</w:Zoom>
+                  <w:DoNotOptimizeForBrowser/>
+                </w:WordDocument>
+              </xml>
+              <style>
+                @page {
+                  size: A4;
+                  margin: 3cm 2cm 2cm 3cm;
+                }
+                
+                body {
+                  font-family: 'Times New Roman', Times, serif;
+                  font-size: 13pt;
+                  line-height: 1.5;
+                  color: #000000;
+                }
+                
+                .header {
+                  text-align: center;
+                  margin-bottom: 1cm;
+                }
+                
+                .header-top {
+                  font-size: 13pt;
+                  text-transform: uppercase;
+                  margin-bottom: 0.3cm;
+                }
+                
+                .header h1 {
+                  font-size: 16pt;
+                  font-weight: bold;
+                  text-transform: uppercase;
+                  margin: 0.8cm 0 0.5cm 0;
+                  letter-spacing: 0.5pt;
+                }
+                
+                .header .subtitle {
+                  font-size: 13pt;
+                  font-style: italic;
+                  margin: 0.3cm 0;
+                }
+                
+                .info-section {
+                  margin: 0.8cm 0;
+                  text-align: left;
+                }
+                
+                .info-row {
+                  margin: 0.2cm 0;
+                  line-height: 1.6;
+                }
+                
+                .info-label {
+                  display: inline-block;
+                  width: 3cm;
+                  font-weight: normal;
+                }
+                
+                .content-section {
+                  margin: 0.6cm 0;
+                  text-align: justify;
+                }
+                
+                table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  margin: 0.5cm 0;
+                }
+                
+                th, td {
+                  border: 1px solid black;
+                  padding: 0.3cm;
+                  text-align: left;
+                  vertical-align: top;
+                }
+                
+                th {
+                  background-color: #e0e0e0;
+                  font-weight: bold;
+                  text-align: center;
+                }
+                
+                .col-date {
+                  width: 15%;
+                  text-align: center;
+                }
+                
+                .col-content {
+                  width: 35%;
+                }
+                
+                .col-result {
+                  width: 35%;
+                }
+                
+                .col-time {
+                  width: 15%;
+                  text-align: center;
+                }
+                
+                .task-number {
+                  display: inline-block;
+                  width: 0.8cm;
+                }
+                
+                .summary-section {
+                  margin: 0.8cm 0;
+                  text-align: justify;
+                }
+                
+                .signature-block {
+                  margin-top: 1.5cm;
+                  text-align: center;
+                }
+                
+                .signature-left {
+                  float: left;
+                  width: 45%;
+                  text-align: center;
+                }
+                
+                .signature-right {
+                  float: right;
+                  width: 45%;
+                  text-align: center;
+                }
+                
+                .signature-title {
+                  font-weight: bold;
+                  text-transform: uppercase;
+                  margin-bottom: 0.3cm;
+                }
+                
+                .signature-note {
+                  font-style: italic;
+                  font-size: 12pt;
+                  margin-bottom: 2cm;
+                }
+                
+                .signature-name {
+                  font-weight: bold;
+                }
+                
+                .clearfix::after {
+                  content: "";
+                  display: table;
+                  clear: both;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <div class="header-top">Tổ Phòng chống tội phạm</div>
+                <h1>BÁO CÁO KẾT QUẢ CÔNG TÁC</h1>
+                <div class="subtitle">(Từ ngày ${fromDate.split('-').reverse().join('/')} đến ngày ${toDate.split('-').reverse().join('/')})</div>
+              </div>
+             
+              <div class="info-section">
+                <div class="info-row">
+                  <span class="info-label">Kính gửi:</span>
+                  <span>Lãnh đạo Đơn vị</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Họ và tên:</span>
+                  <span>${userInfo.name}</span>
+                </div>
+                ${userInfo.rank ? `<div class="info-row"><span class="info-label">Cấp bậc:</span><span>${userInfo.rank}</span></div>` : ''}
+                ${userInfo.unit ? `<div class="info-row"><span class="info-label">Đơn vị:</span><span>${userInfo.unit}</span></div>` : ''}
+                ${userInfo.idNumber ? `<div class="info-row"><span class="info-label">Số hiệu:</span><span>${userInfo.idNumber}</span></div>` : ''}
+              </div>
+
+              <div class="content-section">
+                <p>Tôi xin báo cáo kết quả công tác trong thời gian từ ngày ${fromDate.split('-').reverse().join('/')} đến ngày ${toDate.split('-').reverse().join('/')} như sau:</p>
+              </div>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th class="col-date">NGÀY THÁNG</th>
+                    <th class="col-content">NỘI DUNG CÔNG VIỆC</th>
+                    <th class="col-result">KẾT QUẢ</th>
+                    <th class="col-time">THỜI GIAN</th>
+                  </tr>
+                </thead>
+                <tbody>
+          `;
+
+          let totalTasks = 0;
+          let completedTasks = 0;
+
+          allDays.forEach((day) => {
+            const stats = getDayStats(day);
+            totalTasks += stats.total;
+            completedTasks += stats.completed;
+           
+            if (day.tasks.length > 0) {
+              day.tasks.forEach((task, idx) => {
+                const statusMark = task.completed ? '✓' : '○';
+                const timeRange = (task.startTime && task.endTime) 
+                  ? `${task.startTime} - ${task.endTime}` 
+                  : (task.startTime || task.endTime || '');
+
+                htmlContent += `
+                  <tr>
+                    <td class="col-date">${day.displayDate}<br/><em>${day.dayOfWeek}</em></td>
+                    <td class="col-content">
+                      <span class="task-number">${statusMark} ${idx + 1}.</span>
+                      ${task.content || 'Chưa có nội dung'}
+                      ${task.notes ? `<br/><em style="font-size: 11pt; color: #666;">Ghi chú: ${task.notes}</em>` : ''}
+                    </td>
+                    <td class="col-result">${task.result || ''}</td>
+                    <td class="col-time">${timeRange}</td>
+                  </tr>
+                `;
+              });
+            }
+          });
+
+          htmlContent += `
+                </tbody>
+              </table>
+          `;
+
+          const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+          htmlContent += `
+            <div class="summary-section">
+              <p><strong>Tổng kết:</strong> Trong kỳ báo cáo, tôi đã được giao tổng cộng <strong>${totalTasks}</strong> công việc, trong đó đã hoàn thành <strong>${completedTasks}</strong> công việc, còn lại <strong>${totalTasks - completedTasks}</strong> công việc đang tiếp tục thực hiện. Tỷ lệ hoàn thành đạt <strong>${completionRate}%</strong>.</p>
+              <p>Tôi xin cam đoan sẽ hoàn thành tốt các nhiệm vụ được giao trong thời gian tới và không ngừng nâng cao trách nhiệm, ý thức phục vụ Nhân dân.</p>
+            </div>
+           
+            <div class="signature-block clearfix">
+              <div class="signature-left">
+                <div class="signature-title">LÃNH ĐẠO ĐƠN VỊ</div>
+                <div class="signature-note">(Ký, ghi rõ họ tên và đóng dấu)</div>
+              </div>
+              
+              <div class="signature-right">
+                <div style="font-style: italic; margin-bottom: 0.3cm;">Ngày ${new Date().getDate()} tháng ${new Date().getMonth() + 1} năm ${new Date().getFullYear()}</div>
+                <div class="signature-title">NGƯỜI LẬP BÁO CÁO</div>
+                <div class="signature-note">(Ký và ghi rõ họ tên)</div>
+                <div class="signature-name">${userInfo.name}</div>
+              </div>
+            </div>
+           
+            </body>
+            </html>
+          `;
+
+          const blob = new Blob(['\ufeff', htmlContent], {
+            type: 'application/msword'
+          });
+         
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `Bao_Cao_Cong_Tac_${fromDate}_den_${toDate}.doc`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+         
+          alert('Xuất báo cáo thành công!');
+        } catch (error) {
+          console.error('Export error:', error);
+          alert('Có lỗi khi xuất báo cáo. Vui lòng thử lại.');
+        } finally {
+          setIsExporting(false);
+        }
+      };
+
+      if (isLoading) {
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 flex items-center justify-center">
+            <div className="text-white text-xl">Đang tải...</div>
+          </div>
+        );
+      }
+
+      if (showUserInfo) {
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 p-4 flex items-center justify-center">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-md w-full animate-slide-in">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-600 rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
+                  <span className="text-white text-2xl sm:text-3xl">⭐</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-bold text-blue-900 mb-2">Thông Tin Cá Nhân</h2>
+                <p className="text-sm sm:text-base text-gray-600">Sổ Kế Hoạch Công Tác</p>
+                {!isEditingUserInfo && (
+                  <p className="text-amber-600 text-xs mt-2 flex items-center justify-center gap-1">
+                    <LockIcon />
+                    Thông tin đã được khóa
+                  </p>
+                )}
+              </div>
+             
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  placeholder="Họ và tên *"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  value={userInfo.name}
+                  onChange={(e) => setUserInfo({...userInfo, name: e.target.value})}
+                  disabled={!isEditingUserInfo}
+                />
+                <input
+                  type="text"
+                  placeholder="Cấp bậc"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  value={userInfo.rank}
+                  onChange={(e) => setUserInfo({...userInfo, rank: e.target.value})}
+                  disabled={!isEditingUserInfo}
+                />
+                <input
+                  type="text"
+                  placeholder="Đơn vị công tác"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  value={userInfo.unit}
+                  onChange={(e) => setUserInfo({...userInfo, unit: e.target.value})}
+                  disabled={!isEditingUserInfo}
+                />
+                <input
+                  type="text"
+                  placeholder="Số hiệu"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  value={userInfo.idNumber}
+                  onChange={(e) => setUserInfo({...userInfo, idNumber: e.target.value})}
+                  disabled={!isEditingUserInfo}
+                />
+                
+                <div className="flex gap-2">
+                  {isEditingUserInfo ? (
+                    <button
+                      onClick={saveUserInfo}
+                      className="flex-1 bg-blue-600 text-white py-2 sm:py-3 rounded-lg font-semibold text-sm sm:text-base hover:bg-blue-700 transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+                    >
+                      Lưu thông tin
+                    </button>
+                  ) : (
+                    <button
+                      onClick={startEditingUserInfo}
+                      className="flex-1 bg-amber-600 text-white py-2 sm:py-3 rounded-lg font-semibold text-sm sm:text-base hover:bg-amber-700 transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center justify-center gap-2"
+                    >
+                      <EditIcon />
+                      Chỉnh sửa
+                    </button>
+                  )}
+                  
+                  {!isEditingUserInfo && (
+                    <button
+                      onClick={() => setShowUserInfo(false)}
+                      className="flex-1 bg-purple-600 text-white py-2 sm:py-3 rounded-lg font-semibold text-sm sm:text-base hover:bg-purple-700 transition-all"
+                    >
+                      Bắt đầu
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-gray-50 to-blue-50 pb-8">
+          {/* Hidden file input for restore */}
+          <input
+            ref={restoreInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleRestore}
+            style={{ display: 'none' }}
+          />
+
+          {/* Backup Menu Dropdown */}
+          {showBackupMenu && (
+            <div className="fixed inset-0 z-50" onClick={() => setShowBackupMenu(false)}>
+              <div 
+                className="absolute top-16 right-4 bg-white rounded-lg shadow-2xl border border-gray-200 p-2 min-w-[200px] animate-slide-in"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={handleBackup}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 rounded-lg transition-colors text-left"
+                >
+                  <DownloadIcon />
+                  <div>
+                    <div className="font-semibold text-sm">Sao lưu dữ liệu</div>
+                    <div className="text-xs text-gray-500">Tải file backup</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    restoreInputRef.current?.click();
+                    setShowBackupMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-green-50 rounded-lg transition-colors text-left"
+                >
+                  <UploadIcon />
+                  <div>
+                    <div className="font-semibold text-sm">Khôi phục dữ liệu</div>
+                    <div className="text-xs text-gray-500">Chọn file backup</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Reminder Modal */}
+          {showReminderModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold">Quản lý nhắc việc</h2>
+                  <button onClick={() => setShowReminderModal(false)} className="text-gray-500 hover:text-gray-700">
+                    <XIcon />
+                  </button>
+                </div>
+                
+                {reminders.length === 0 ? (
+                  <p className="text-gray-500 text-center py-4">Chưa có nhắc việc nào</p>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {reminders
+                      .filter(r => !r.notified)
+                      .sort((a, b) => new Date(a.datetime) - new Date(b.datetime))
+                      .map(reminder => (
+                        <div key={reminder.id} className="border rounded-lg p-3">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <p className="font-semibold text-sm">{reminder.content}</p>
+                              <p className="text-xs text-gray-600 mt-1">
+                                {new Date(reminder.datetime).toLocaleString('vi-VN')}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => deleteReminder(reminder.id)}
+                              className="text-red-500 hover:text-red-700 ml-2"
+                            >
+                              <TrashIcon />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Export Modal */}
+          {showExportModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-md w-full">
+                <h2 className="text-lg sm:text-xl font-bold mb-4">Chọn thời gian xuất báo cáo</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Từ ngày</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border rounded-lg focus:border-blue-600 focus:outline-none"
+                      value={exportFromDate}
+                      onChange={(e) => setExportFromDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Đến ngày</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border rounded-lg focus:border-blue-600 focus:outline-none"
+                      value={exportToDate}
+                      onChange={(e) => setExportToDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleExport}
+                      className="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold text-sm sm:text-base hover:bg-green-700 transition-all disabled:opacity-50"
+                      disabled={isExporting}
+                    >
+                      {isExporting ? 'Đang xuất...' : 'Xuất báo cáo'}
+                    </button>
+                    <button
+                      onClick={() => setShowExportModal(false)}
+                      className="flex-1 bg-gray-300 text-gray-800 py-2 rounded-lg font-semibold text-sm sm:text-base hover:bg-gray-400 transition-all"
+                    >
+                      Hủy
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Week List Modal */}
+          {showWeekList && allWeeks.length > 0 && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg sm:text-xl font-bold">Danh sách các tuần</h2>
+                  <button
+                    onClick={() => setShowWeekList(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <XIcon />
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {allWeeks.map((week) => {
+                    const totalTasks = week.workPlan.reduce((sum, day) => sum + day.tasks.length, 0);
+                    const completedTasks = week.workPlan.reduce((sum, day) => 
+                      sum + day.tasks.filter(t => t.completed).length, 0
+                    );
+                    const isActive = week.id === activeWeekId;
+
+                    return (
+                      <div
+                        key={week.id}
+                        className={`p-3 sm:p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          isActive 
+                            ? 'border-blue-600 bg-blue-50' 
+                            : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                        }`}
+                        onClick={() => {
+                          setActiveWeekId(week.id);
+                          setShowWeekList(false);
+                        }}
+                      >
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-sm sm:text-lg truncate">{week.name}</h3>
+                            <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                              {totalTasks} công việc • {completedTasks} hoàn thành
+                            </p>
+                            {totalTasks > 0 && (
+                              <div className="w-full h-2 bg-gray-200 rounded-full mt-2">
+                                <div
+                                  className="h-full bg-green-500 rounded-full transition-all"
+                                  style={{ width: `${(completedTasks / totalTasks) * 100}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0">
+                            {isActive && (
+                              <span className="px-2 sm:px-3 py-1 bg-blue-600 text-white text-xs rounded-full whitespace-nowrap">
+                                Đang xem
+                              </span>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteWeek(week.id);
+                              }}
+                              className="text-red-500 hover:text-red-700 p-1"
+                            >
+                              <TrashIcon />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Notification */}
+          {showNotification && pendingTasks.length > 0 && (
+            <div className="fixed top-4 right-4 bg-red-600 text-white p-3 sm:p-4 rounded-xl shadow-2xl max-w-xs sm:max-w-sm z-50 animate-slide-in">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-bold text-sm sm:text-base flex items-center gap-2">
+                  <AlertIcon />
+                  {pendingTasks.length} việc chưa xong
+                </h3>
+                <button onClick={() => setShowNotification(false)} className="text-white hover:text-gray-200 transition-colors">
+                  <XIcon />
+                </button>
+              </div>
+              <div className="space-y-2 max-h-60 overflow-y-auto scrollbar-thin">
+                {pendingTasks.slice(0, 5).map((task, idx) => (
+                  <div key={idx} className="bg-red-700 p-2 rounded text-xs">
+                    <p className="font-semibold">{task.dayOfWeek}</p>
+                    <p className="opacity-90 truncate">{task.content}</p>
+                  </div>
+                ))}
+                {pendingTasks.length > 5 && (
+                  <p className="text-xs text-center opacity-75">Và {pendingTasks.length - 5} việc khác...</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Header */}
+          <div className="bg-white shadow-md sticky top-0 z-40">
+            <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3">
+              <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-600 rounded-full flex items-center justify-center shadow-md flex-shrink-0">
+                    <span className="text-white text-lg sm:text-xl">⭐</span>
+                  </div>
+                  <div className="min-w-0">
+                    <h1 className="text-sm sm:text-lg font-bold text-blue-900 truncate">KẾ HOẠCH CÔNG TÁC</h1>
+                    <p className="text-xs text-gray-600 truncate">{userInfo.name}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-1 sm:gap-2 flex-wrap justify-end">
+                  {/* Backup/Restore Button */}
+                  <button
+                    onClick={() => setShowBackupMenu(!showBackupMenu)}
+                    className="relative p-1.5 sm:p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                    title="Sao lưu & Khôi phục"
+                  >
+                    <DatabaseIcon />
+                  </button>
+
+                  <button
+                    onClick={() => setShowReminderModal(true)}
+                    className="relative p-1.5 sm:p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                  >
+                    <BellIcon />
+                    {reminders.filter(r => !r.notified).length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
+                        {reminders.filter(r => !r.notified).length}
+                      </span>
+                    )}
+                  </button>
+
+                  {allWeeks.length > 1 && (
+                    <button
+                      onClick={() => setShowWeekList(true)}
+                      className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-all shadow-md text-xs sm:text-sm"
+                    >
+                      <FolderIcon />
+                      <span className="hidden xs:inline">Tuần</span>
+                      <span className="inline xs:hidden">{allWeeks.length}</span>
+                      <span className="hidden xs:inline">({allWeeks.length})</span>
+                    </button>
+                  )}
+
+                  {allWeeks.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setExportFromDate(activeWeek.startDate);
+                        setExportToDate(activeWeek.endDate);
+                        setShowExportModal(true);
+                      }}
+                      disabled={isExporting}
+                      className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-all shadow-md disabled:opacity-50 text-xs sm:text-sm"
+                    >
+                      <DownloadIcon />
+                      <span className="hidden sm:inline">Xuất báo cáo</span>
+                    </button>
+                  )}
+
+                  {pendingTasks.length > 0 && (
+                    <button
+                      onClick={() => setShowNotification(true)}
+                      className="relative p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <AlertIcon />
+                      <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
+                        {pendingTasks.length}
+                      </span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => setShowUserInfo(true)}
+                    className="p-1.5 sm:p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  >
+                    <EditIcon />
+                  </button>
+                </div>
+              </div>
+
+              {allWeeks.length === 0 && (
+                <button
+                  onClick={createNewWeek}
+                  className="mt-3 w-full btn-primary text-white py-2.5 sm:py-3 rounded-lg font-semibold text-xs sm:text-sm flex items-center justify-center gap-2"
+                >
+                  <PlusIcon />
+                  Tạo kế hoạch tuần mới
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Work Plan */}
+          {activeWeek && (
+            <div className="max-w-7xl mx-auto px-3 sm:px-4 mt-4">
+              <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 mb-4">
+                <div className="flex justify-between items-center gap-2">
+                  <h2 className="text-sm sm:text-lg font-bold text-gray-800 truncate flex-1">{activeWeek.name}</h2>
+                  <button
+                    onClick={createNewWeek}
+                    className="btn-primary text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold text-xs sm:text-sm flex items-center gap-1 sm:gap-2 flex-shrink-0"
+                  >
+                    <RefreshIcon />
+                    <span className="hidden xs:inline">Tuần mới</span>
+                    <span className="inline xs:hidden">Mới</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {activeWeek.workPlan.map((day, dayIndex) => {
+                  const stats = getDayStats(day);
+                  const isExpanded = expandedDays[dayIndex];
+                  const todayFlag = isToday(day.date);
+                  const isEmpty = stats.total === 0;
+                 
+                  return (
+                    <div
+                      key={dayIndex}
+                      className={`bg-white rounded-xl shadow-md overflow-hidden transition-all hover:shadow-lg ${
+                        todayFlag ? 'ring-2 ring-blue-500' : ''
+                      } ${isEmpty ? 'bg-gradient-to-br from-yellow-50 to-amber-50' : ''}`}
+                    >
+                      {/* Day Header */}
+                      <div
+                        className={`${
+                          todayFlag 
+                            ? 'bg-gradient-to-r from-blue-600 to-blue-700' 
+                            : isEmpty 
+                            ? 'bg-gradient-to-r from-amber-500 to-orange-600'
+                            : 'bg-gradient-to-r from-gray-700 to-gray-800'
+                        } text-white p-2.5 sm:p-3 cursor-pointer hover:opacity-90 transition-opacity`}
+                        onClick={() => toggleDay(dayIndex)}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                            <CalendarIcon />
+                            <div className="min-w-0">
+                              <h3 className="font-bold text-sm sm:text-base truncate">{day.dayOfWeek}</h3>
+                              <p className="text-xs opacity-90">{day.displayDate}</p>
+                            </div>
+                            {todayFlag && (
+                              <span className="text-xs bg-yellow-400 text-gray-900 px-2 py-0.5 sm:py-1 rounded-full font-semibold whitespace-nowrap">
+                                Hôm nay
+                              </span>
+                            )}
+                            {isEmpty && !todayFlag && (
+                              <span className="text-xs bg-white text-orange-600 px-2 py-0.5 sm:py-1 rounded-full font-semibold whitespace-nowrap">
+                                Trống
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                            <div className="text-right">
+                              <p className="text-xs opacity-75 whitespace-nowrap">
+                                {stats.completed}/{stats.total}
+                              </p>
+                              {stats.total > 0 && (
+                                <div className="w-16 sm:w-24 h-1.5 bg-white bg-opacity-30 rounded-full mt-1">
+                                  <div
+                                    className="h-full bg-green-400 rounded-full transition-all"
+                                    style={{ width: `${(stats.completed / stats.total) * 100}%` }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Day Content */}
+                      {isExpanded && (
+                        <div className="p-3 sm:p-4 space-y-3">
+                          {/* Tasks */}
+                          {day.tasks.length > 0 && (
+                            <div className="space-y-3">
+                              {day.tasks.map((task, taskIndex) => (
+                                <div
+                                  key={task.id}
+                                  className={`task-card border rounded-lg p-2.5 sm:p-3 ${task.completed ? 'bg-green-50 border-green-300' : 'border-gray-200 hover:border-blue-300'}`}
+                                >
+                                  <div className="flex gap-2 sm:gap-3">
+                                    <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
+                                      <input
+                                        type="checkbox"
+                                        className="mt-1 w-4 h-4 sm:w-5 sm:h-5 text-blue-600 rounded cursor-pointer flex-shrink-0"
+                                        checked={task.completed}
+                                        onChange={(e) => updateTask(dayIndex, taskIndex, 'completed', e.target.checked)}
+                                      />
+                                      <div className="flex-1 space-y-2 min-w-0">
+                                        <textarea
+                                          placeholder="Nội dung công việc..."
+                                          className={`w-full px-2 py-1 text-xs sm:text-sm border-0 border-b-2 border-gray-300 focus:border-blue-600 focus:outline-none resize-none ${task.completed ? 'line-through text-gray-500' : ''}`}
+                                          rows="2"
+                                          value={task.content}
+                                          onChange={(e) => updateTask(dayIndex, taskIndex, 'content', e.target.value)}
+                                        />
+                                        <div className="flex gap-1.5 sm:gap-2 items-center text-xs flex-wrap">
+                                          <ClockIcon />
+                                          <input
+                                            type="time"
+                                            className="px-1.5 sm:px-2 py-1 text-xs border border-gray-300 rounded focus:border-blue-600 focus:outline-none"
+                                            value={task.startTime}
+                                            onChange={(e) => updateTask(dayIndex, taskIndex, 'startTime', e.target.value)}
+                                          />
+                                          <span className="text-gray-400">→</span>
+                                          <input
+                                            type="time"
+                                            className="px-1.5 sm:px-2 py-1 text-xs border border-gray-300 rounded focus:border-blue-600 focus:outline-none"
+                                            value={task.endTime}
+                                            onChange={(e) => updateTask(dayIndex, taskIndex, 'endTime', e.target.value)}
+                                          />
+                                          <button
+                                            onClick={() => {
+                                              const datetime = prompt('Nhập thời gian nhắc việc (dd/mm/yyyy HH:MM):\nVí dụ: 06/11/2024 14:30');
+                                              if (datetime) {
+                                                try {
+                                                  const [datePart, timePart] = datetime.split(' ');
+                                                  const [dd, mm, yyyy] = datePart.split('/');
+                                                  const reminderDatetime = `${yyyy}-${mm}-${dd}T${timePart}:00`;
+                                                  addReminder(task.content, reminderDatetime);
+                                                } catch (e) {
+                                                  alert('Định dạng không đúng!');
+                                                }
+                                              }
+                                            }}
+                                            className="ml-auto text-purple-600 hover:text-purple-800 p-1"
+                                            title="Đặt nhắc việc"
+                                          >
+                                            <BellIcon />
+                                          </button>
+                                        </div>
+                                        <div className="flex items-start gap-1.5 sm:gap-2">
+                                          <NoteIcon />
+                                          <textarea
+                                            placeholder="Kết quả công việc..."
+                                            className="flex-1 px-2 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none resize-none bg-gray-50"
+                                            rows="2"
+                                            value={task.result}
+                                            onChange={(e) => updateTask(dayIndex, taskIndex, 'result', e.target.value)}
+                                          />
+                                        </div>
+                                        <div className="flex items-start gap-1.5 sm:gap-2">
+                                          <NoteIcon />
+                                          <textarea
+                                            placeholder="Ghi chú..."
+                                            className="flex-1 px-2 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none resize-none bg-gray-50"
+                                            rows="2"
+                                            value={task.notes}
+                                            onChange={(e) => updateTask(dayIndex, taskIndex, 'notes', e.target.value)}
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => deleteTask(dayIndex, taskIndex)}
+                                      className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 sm:p-2 rounded transition-colors flex-shrink-0"
+                                    >
+                                      <TrashIcon />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Add Task Button */}
+                          <button
+                            onClick={() => addTask(dayIndex)}
+                            className="w-full py-2.5 sm:py-3 border-2 border-dashed border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold"
+                          >
+                            <PlusIcon />
+                            Thêm công việc mới
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    ReactDOM.render(<WorkPlanApp />, document.getElementById('root'));
+  </script>
+</body>
+</html>
